@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Digit Root Grid</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a1a;
+    color: #eee;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 14px;
+    background: #111;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  #controls label { display: flex; align-items: center; gap: 6px; }
+
+  #controls input[type=range] { width: 90px; }
+  #baseSlider { width: 320px; }
+
+  #controls input[type=number] {
+    width: 70px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #eee;
+    padding: 2px 5px;
+    font-family: monospace;
+    font-size: 13px;
+    border-radius: 3px;
+  }
+
+  #baseInput {
+    width: 46px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #eee;
+    padding: 2px 5px;
+    font-family: monospace;
+    font-size: 13px;
+    border-radius: 3px;
+    text-align: center;
+  }
+
+  .toggle {
+    display: flex;
+    border: 1px solid #555;
+    border-radius: 3px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .toggle button {
+    background: #2a2a2a;
+    border: none;
+    color: #888;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+  .toggle button.active { background: #444; color: #fff; }
+  .toggle button:not(:last-child) { border-right: 1px solid #555; }
+
+  #playBtn {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #eee;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #playBtn:hover { background: #3a3a3a; }
+  #playBtn.playing { border-color: #aaa; color: #fff; }
+
+  #saveBtn {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #eee;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #saveBtn:hover { background: #3a3a3a; }
+
+  #nav-link {
+    color: #7aa8d8;
+    font-size: 12px;
+    text-decoration: none;
+    border-bottom: 1px solid #4a78a8;
+    padding-bottom: 1px;
+  }
+  #nav-link:hover { color: #a8ccee; border-color: #7aa8d8; }
+
+  #info {
+    margin-left: auto;
+    color: #888;
+    font-size: 12px;
+  }
+
+  #grid-wrap { flex: 1; overflow: hidden; }
+
+  #grid { display: grid; }
+
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: 1px solid rgba(0,0,0,0.18);
+    cursor: pointer;
+  }
+  .cell:hover { text-decoration: underline; }
+
+  /* ── Modal ── */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #overlay.open { display: flex; }
+
+  #modal {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 28px 32px;
+    min-width: 320px;
+    max-width: 480px;
+    font-family: monospace;
+    color: #ddd;
+    position: relative;
+  }
+
+  #modal-close {
+    position: absolute;
+    top: 10px; right: 14px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #modal-close:hover { color: #bbb; }
+
+  #modal-number {
+    font-size: 2em;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+
+  #modal-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 22px;
+  }
+
+  .modal-step {
+    font-size: 15px;
+    color: #999;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+  .modal-step .eq { color: #bbb; }
+
+  #modal-result {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 6px 18px;
+    border-radius: 4px;
+    font-size: 1.3em;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <label>
+    Start:
+    <input type="number" id="startNum" value="0" min="0" max="99999">
+  </label>
+  <label>
+    Cell size:
+    <input type="range" id="cellSize" min="12" max="120" value="60">
+    <span id="cellSizeVal">60px</span>
+  </label>
+  <label>
+    Base:
+    <input type="range" id="baseSlider" min="2" max="48" value="10">
+    <input type="number" id="baseInput" min="2" max="48" value="10">
+  </label>
+  <div class="toggle">
+    <button id="btnWheel" class="active">Color wheel</button>
+    <button id="btnNamed">Named Colors</button>
+  </div>
+  <label>
+    <input type="checkbox" id="showNumbers" checked>
+    Show numbers
+  </label>
+  <button id="playBtn">&#9654; Play</button>
+  <button id="saveBtn">&#8681; Save</button>
+  <a id="nav-link" href="pascal_digit_root.html">&#8594; Pascal's Triangle</a>
+  <span id="info"></span>
+</div>
+
+<div id="grid-wrap">
+  <div id="grid"></div>
+</div>
+
+<!-- Modal -->
+<div id="overlay">
+  <div id="modal">
+    <button id="modal-close">&#x2715;</button>
+    <div id="modal-number"></div>
+    <div id="modal-subtitle"></div>
+    <div id="modal-steps"></div>
+    <div id="modal-result"></div>
+  </div>
+</div>
+
+<script>
+const NAMED_COLORS = {
+  0:  { bg: [30,  30,  30],  light: true  },
+  1:  { bg: [220, 50,  50],  light: true  },
+  2:  { bg: [255, 150, 0],   light: false },
+  3:  { bg: [240, 220, 0],   light: false },
+  4:  { bg: [50,  180, 50],  light: true  },
+  5:  { bg: [30,  100, 220], light: true  },
+  6:  { bg: [75,  0,   130], light: true  },
+  7:  { bg: [180, 80,  220], light: true  },
+  8:  { bg: [255, 150, 190], light: false },
+  9:  { bg: [210, 0,   180], light: true  },
+  10: { bg: [0,   180, 180], light: true  },
+  11: { bg: [130, 220, 0],   light: false },
+  12: { bg: [200, 160, 0],   light: false },
+  13: { bg: [80,  80,  80],  light: true  },
+  14: { bg: [220, 220, 220], light: false },
+  15: { bg: [160, 30,  30],  light: true  },
+  16: { bg: [0,   150, 255], light: true  },
+  17: { bg: [255, 100, 80],  light: true  },
+  18: { bg: [110, 140, 0],   light: true  },
+  19: { bg: [20,  20,  100], light: true  },
+  20: { bg: [180, 160, 220], light: false },
+  21: { bg: [250, 130, 100], light: false },
+  22: { bg: [0,   120, 120], light: true  },
+  23: { bg: [210, 140, 0],   light: false },  // Amber
+  24: { bg: [150, 230, 180], light: false },  // Mint
+  25: { bg: [128, 0,   0],   light: true  },  // Maroon
+  26: { bg: [64,  224, 208], light: false },  // Turquoise
+  27: { bg: [255, 200, 150], light: false },  // Peach
+  28: { bg: [34,  100, 34],  light: true  },  // Forest Green
+  29: { bg: [130, 130, 220], light: true  },  // Periwinkle
+  30: { bg: [220, 100, 120], light: true  },  // Rose
+  31: { bg: [160, 100, 30],  light: true  },  // Bronze
+  32: { bg: [90,  110, 130], light: true  },  // Slate
+  33: { bg: [130, 200, 0],   light: false },  // Chartreuse
+  34: { bg: [180, 70,  20],  light: true  },  // Rust
+  35: { bg: [200, 160, 220], light: false },  // Lilac
+  36: { bg: [0,   120, 200], light: true  },  // Cerulean
+  37: { bg: [195, 155, 40],  light: false },  // Ochre
+  38: { bg: [110, 40,  100], light: true  },  // Plum
+  39: { bg: [80,  220, 180], light: false },  // Aquamarine
+  40: { bg: [110, 0,   50],  light: true  },  // Burgundy
+  41: { bg: [210, 180, 130], light: false },  // Tan
+  42: { bg: [0,   50,  255], light: true  },  // Electric Blue
+  43: { bg: [255, 50,  140], light: true  },  // Hot Pink
+  44: { bg: [0,   80,  0],   light: true  },  // Dark Green
+  45: { bg: [240, 230, 200], light: false },  // Ivory
+  46: { bg: [55,  125, 175], light: true  },  // Steel Blue
+  47: { bg: [195, 90,  40],  light: true  },  // Copper
+};
+
+const BASE_MIN = 2;
+const BASE_MAX = 48;
+
+// 0-9, A-Z (10-35), a-z (36-61) — covers all bases up to 48
+const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+function toBaseStr(n, base) {
+  if (n === 0) return '0';
+  let s = '';
+  while (n > 0) { s = DIGITS[n % base] + s; n = Math.floor(n / base); }
+  return s;
+}
+
+function digitRoot(n, base) {
+  return n === 0 ? 0 : ((n - 1) % (base - 1)) + 1;
+}
+
+// Returns each iteration step for the modal breakdown
+function digitRootSteps(n, base) {
+  if (n === 0) return [];
+  const steps = [];
+  let cur = n;
+  while (cur >= base) {
+    const digits = [];
+    let tmp = cur;
+    while (tmp > 0) { digits.unshift(tmp % base); tmp = Math.floor(tmp / base); }
+    const sum = digits.reduce((a, b) => a + b, 0);
+    steps.push({
+      terms: digits.map(d => toBaseStr(d, base)),
+      sum,
+      sumStr: toBaseStr(sum, base),
+    });
+    cur = sum;
+  }
+  return steps;
+}
+
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+
+function needsLightText(r, g, b) {
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) < 0.35;
+}
+
+function wheelColor(root, base) {
+  if (root === 0) return { bg: [30, 30, 30], light: true };
+  const hue     = ((root - 1) / (base - 1)) * 360;
+  const [r,g,b] = hslToRgb(hue, 80, 50);
+  return { bg: [r, g, b], light: needsLightText(r, g, b) };
+}
+
+const gridEl     = document.getElementById('grid');
+const wrap       = document.getElementById('grid-wrap');
+const baseSlider = document.getElementById('baseSlider');
+const baseInput  = document.getElementById('baseInput');
+const playBtn    = document.getElementById('playBtn');
+const overlay    = document.getElementById('overlay');
+
+let cellSize     = 60;
+let startNum     = 0;
+let base         = 10;
+let colorMode    = 'wheel';
+let showNumbers  = true;
+let cellPool     = [];
+let cellNumbers  = [];   // parallel array: which number each pool cell represents
+let playInterval = null;
+
+function getColor(root) {
+  if (colorMode === 'wheel') return wheelColor(root, base);
+  return NAMED_COLORS[root] ?? wheelColor(root, base);
+}
+
+function setBase(b) {
+  base = Math.min(BASE_MAX, Math.max(BASE_MIN, b));
+  baseSlider.value = base;
+  baseInput.value  = base;
+  draw();
+}
+
+function draw() {
+  const cols  = Math.floor(wrap.clientWidth  / cellSize);
+  const rows  = Math.floor(wrap.clientHeight / cellSize);
+  const total = cols * rows;
+
+  const fontSize = Math.max(9, Math.floor(cellSize * 0.28)) + 'px';
+  const sizeStr  = cellSize + 'px';
+  const showText = showNumbers && cellSize >= 28;
+
+  gridEl.style.gridTemplateColumns = `repeat(${cols}, ${sizeStr})`;
+
+  while (cellPool.length < total) {
+    const div = document.createElement('div');
+    div.className = 'cell';
+    div.addEventListener('click', () => openModal(div._n));
+    gridEl.appendChild(div);
+    cellPool.push(div);
+  }
+
+  for (let i = 0; i < total; i++) {
+    const n    = startNum + i;
+    const root = digitRoot(n, base);
+    const c    = getColor(root);
+    const div  = cellPool[i];
+
+    div._n               = n;
+    div.style.width      = sizeStr;
+    div.style.height     = sizeStr;
+    div.style.fontSize   = fontSize;
+    div.style.background = `rgb(${c.bg[0]},${c.bg[1]},${c.bg[2]})`;
+    div.style.color      = c.light ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
+    div.textContent      = showText ? toBaseStr(n, base) : '';
+    div.style.display    = 'flex';
+  }
+
+  for (let i = total; i < cellPool.length; i++) {
+    cellPool[i].style.display = 'none';
+  }
+
+  const last = startNum + total - 1;
+  document.getElementById('info').textContent =
+    `${cols} cols × ${rows} rows  |  ${toBaseStr(startNum, base)}–${toBaseStr(last, base)}  (${total} cells)`;
+}
+
+// ── Modal ──────────────────────────────────────────────
+function openModal(n) {
+  const root  = digitRoot(n, base);
+  const c     = getColor(root);
+  const steps = digitRootSteps(n, base);
+  const nStr  = toBaseStr(n, base);
+
+  document.getElementById('modal-number').textContent = nStr;
+  document.getElementById('modal-subtitle').textContent =
+    `base ${base}  ·  digit root`;
+
+  const stepsEl = document.getElementById('modal-steps');
+  stepsEl.innerHTML = '';
+
+  if (steps.length === 0) {
+    // Already a single digit — no reduction needed
+    const p = document.createElement('div');
+    p.className = 'modal-step';
+    p.style.color = '#666';
+    p.textContent = `${nStr} is already a single digit`;
+    stepsEl.appendChild(p);
+  } else {
+    steps.forEach(({ terms, sumStr }) => {
+      const p = document.createElement('div');
+      p.className = 'modal-step';
+      p.innerHTML =
+        `<span>${terms.join(' + ')}</span>` +
+        ` <span class="eq">= ${sumStr}</span>`;
+      stepsEl.appendChild(p);
+    });
+  }
+
+  const resultEl = document.getElementById('modal-result');
+  const [r,g,b]  = c.bg;
+  resultEl.textContent    = toBaseStr(root, base);
+  resultEl.style.background = `rgb(${r},${g},${b})`;
+  resultEl.style.color      = c.light ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.8)';
+
+  overlay.classList.add('open');
+}
+
+function closeModal() {
+  overlay.classList.remove('open');
+}
+
+// ── Save ───────────────────────────────────────────────
+function saveImage() {
+  const cols = Math.floor(wrap.clientWidth  / cellSize);
+  const rows = Math.floor(wrap.clientHeight / cellSize);
+  const total = cols * rows;
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = cols * cellSize;
+  canvas.height = rows * cellSize;
+  const ctx = canvas.getContext('2d');
+
+  const fontSize = Math.max(9, Math.floor(cellSize * 0.28));
+  ctx.font         = `${fontSize}px monospace`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < total; i++) {
+    const n    = startNum + i;
+    const col  = i % cols;
+    const row  = Math.floor(i / cols);
+    const x    = col * cellSize;
+    const y    = row * cellSize;
+    const root = digitRoot(n, base);
+    const c    = getColor(root);
+
+    ctx.fillStyle = `rgb(${c.bg[0]},${c.bg[1]},${c.bg[2]})`;
+    ctx.fillRect(x, y, cellSize, cellSize);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
+
+    if (showNumbers && cellSize >= 28) {
+      ctx.fillStyle = c.light ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
+      ctx.fillText(toBaseStr(n, base), x + cellSize / 2, y + cellSize / 2);
+    }
+  }
+
+  const a = document.createElement('a');
+  a.download = `digit-root-base${base}-start${startNum}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveImage);
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Controls ───────────────────────────────────────────
+document.getElementById('btnWheel').addEventListener('click', () => {
+  colorMode = 'wheel';
+  document.getElementById('btnWheel').classList.add('active');
+  document.getElementById('btnNamed').classList.remove('active');
+  draw();
+});
+document.getElementById('btnNamed').addEventListener('click', () => {
+  colorMode = 'named';
+  document.getElementById('btnNamed').classList.add('active');
+  document.getElementById('btnWheel').classList.remove('active');
+  draw();
+});
+
+function startPlay() {
+  setBase(BASE_MIN);
+  playInterval = setInterval(() => {
+    if (base + 1 > BASE_MAX) { stopPlay(); return; }
+    setBase(base + 1);
+  }, 800);
+  playBtn.textContent = '⏸ Pause';
+  playBtn.classList.add('playing');
+}
+
+function stopPlay() {
+  clearInterval(playInterval);
+  playInterval = null;
+  playBtn.textContent = '▶ Play';
+  playBtn.classList.remove('playing');
+}
+
+playBtn.addEventListener('click', () => {
+  if (playInterval) stopPlay(); else startPlay();
+});
+
+const cellSizeSlider = document.getElementById('cellSize');
+const cellSizeVal    = document.getElementById('cellSizeVal');
+
+function setCellSize(size) {
+  cellSize = Math.min(120, Math.max(12, size));
+  cellSizeSlider.value     = cellSize;
+  cellSizeVal.textContent  = cellSize + 'px';
+  draw();
+}
+
+cellSizeSlider.addEventListener('input', e => {
+  setCellSize(parseInt(e.target.value));
+});
+
+document.getElementById('startNum').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  if (!isNaN(v) && v >= 0) { startNum = v; draw(); }
+});
+
+baseSlider.addEventListener('input', e => {
+  stopPlay(); setBase(parseInt(e.target.value));
+});
+
+baseInput.addEventListener('change', e => {
+  const v = parseInt(e.target.value);
+  if (!isNaN(v)) { stopPlay(); setBase(v); }
+});
+
+baseInput.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp')   { e.preventDefault(); stopPlay(); setBase(base + 1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); setBase(base - 1); }
+});
+
+document.getElementById('showNumbers').addEventListener('change', e => {
+  showNumbers = e.target.checked;
+  draw();
+});
+
+const ro = new ResizeObserver(() => draw());
+ro.observe(wrap);
+
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -2 : 2;
+  setCellSize(cellSize + delta);
+}, { passive: false });
+
+draw();
+</script>
+</body>
+</html>

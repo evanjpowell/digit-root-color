@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pascal's Triangle — Digit Root</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a1a;
+    color: #eee;
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 14px;
+    background: #111;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  #controls label { display: flex; align-items: center; gap: 6px; }
+
+  #controls input[type=range] { width: 90px; }
+  #baseSlider { width: 320px; }
+
+  #baseInput {
+    width: 46px;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    color: #eee;
+    padding: 2px 5px;
+    font-family: monospace;
+    font-size: 13px;
+    border-radius: 3px;
+    text-align: center;
+  }
+
+  .toggle {
+    display: flex;
+    border: 1px solid #555;
+    border-radius: 3px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .toggle button {
+    background: #2a2a2a;
+    border: none;
+    color: #888;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    cursor: pointer;
+  }
+  .toggle button.active { background: #444; color: #fff; }
+  .toggle button:not(:last-child) { border-right: 1px solid #555; }
+
+  #playBtn {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #eee;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #playBtn:hover { background: #3a3a3a; }
+  #playBtn.playing { border-color: #aaa; color: #fff; }
+
+  #saveBtn {
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #eee;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #saveBtn:hover { background: #3a3a3a; }
+
+  #nav-link {
+    color: #7aa8d8;
+    font-size: 12px;
+    text-decoration: none;
+    border-bottom: 1px solid #4a78a8;
+    padding-bottom: 1px;
+  }
+  #nav-link:hover { color: #a8ccee; border-color: #7aa8d8; }
+
+  #info { margin-left: auto; color: #888; font-size: 12px; }
+
+  #triangle-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .pascal-row { display: flex; }
+
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: 1px solid rgba(0,0,0,0.18);
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .cell:hover { text-decoration: underline; }
+
+  /* ── Modal ── */
+  #overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #overlay.open { display: flex; }
+
+  #modal {
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 28px 32px;
+    min-width: 320px;
+    max-width: 520px;
+    font-family: monospace;
+    color: #ddd;
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  #modal-close {
+    position: absolute;
+    top: 10px; right: 14px;
+    background: none;
+    border: none;
+    color: #666;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  #modal-close:hover { color: #bbb; }
+
+  #modal-number {
+    font-size: 1.6em;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+    word-break: break-all;
+  }
+
+  #modal-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 22px;
+  }
+
+  .modal-step {
+    font-size: 14px;
+    color: #999;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+    word-break: break-all;
+  }
+  .modal-step .eq { color: #bbb; }
+
+  #modal-result {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 6px 18px;
+    border-radius: 4px;
+    font-size: 1.3em;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <label>
+    Cell size:
+    <input type="range" id="cellSize" min="12" max="120" value="60">
+    <span id="cellSizeVal">60px</span>
+  </label>
+  <label>
+    Base:
+    <input type="range" id="baseSlider" min="2" max="48" value="10">
+    <input type="number" id="baseInput" min="2" max="48" value="10">
+  </label>
+  <div class="toggle">
+    <button id="btnWheel" class="active">Color wheel</button>
+    <button id="btnNamed">Named Colors</button>
+  </div>
+  <label>
+    <input type="checkbox" id="showNumbers" checked>
+    Show numbers
+  </label>
+  <button id="playBtn">&#9654; Play</button>
+  <button id="saveBtn">&#8681; Save</button>
+  <a id="nav-link" href="digit_root_grid.html">&#8594; Grid</a>
+  <span id="info"></span>
+</div>
+
+<div id="triangle-wrap"></div>
+
+<!-- Modal -->
+<div id="overlay">
+  <div id="modal">
+    <button id="modal-close">&#x2715;</button>
+    <div id="modal-number"></div>
+    <div id="modal-subtitle"></div>
+    <div id="modal-steps"></div>
+    <div id="modal-result"></div>
+  </div>
+</div>
+
+<script>
+const NAMED_COLORS = {
+  0:  { bg: [30,  30,  30],  light: true  },  // Black
+  1:  { bg: [220, 50,  50],  light: true  },  // Red
+  2:  { bg: [255, 150, 0],   light: false },  // Orange
+  3:  { bg: [240, 220, 0],   light: false },  // Yellow
+  4:  { bg: [50,  180, 50],  light: true  },  // Green
+  5:  { bg: [30,  100, 220], light: true  },  // Blue
+  6:  { bg: [75,  0,   130], light: true  },  // Indigo
+  7:  { bg: [180, 80,  220], light: true  },  // Violet
+  8:  { bg: [255, 150, 190], light: false },  // Pink
+  9:  { bg: [210, 0,   180], light: true  },  // Magenta
+  10: { bg: [0,   180, 180], light: true  },  // Teal
+  11: { bg: [130, 220, 0],   light: false },  // Lime
+  12: { bg: [200, 160, 0],   light: false },  // Gold
+  13: { bg: [80,  80,  80],  light: true  },  // Gray
+  14: { bg: [220, 220, 220], light: false },  // Silver
+  15: { bg: [160, 30,  30],  light: true  },  // Crimson
+  16: { bg: [0,   150, 255], light: true  },  // Sky Blue
+  17: { bg: [255, 100, 80],  light: true  },  // Coral
+  18: { bg: [110, 140, 0],   light: true  },  // Olive
+  19: { bg: [20,  20,  100], light: true  },  // Navy
+  20: { bg: [180, 160, 220], light: false },  // Lavender
+  21: { bg: [250, 130, 100], light: false },  // Salmon
+  22: { bg: [0,   120, 120], light: true  },  // Dark Cyan
+  23: { bg: [210, 140, 0],   light: false },  // Amber
+  24: { bg: [150, 230, 180], light: false },  // Mint
+  25: { bg: [128, 0,   0],   light: true  },  // Maroon
+  26: { bg: [64,  224, 208], light: false },  // Turquoise
+  27: { bg: [255, 200, 150], light: false },  // Peach
+  28: { bg: [34,  100, 34],  light: true  },  // Forest Green
+  29: { bg: [130, 130, 220], light: true  },  // Periwinkle
+  30: { bg: [220, 100, 120], light: true  },  // Rose
+  31: { bg: [160, 100, 30],  light: true  },  // Bronze
+  32: { bg: [90,  110, 130], light: true  },  // Slate
+  33: { bg: [130, 200, 0],   light: false },  // Chartreuse
+  34: { bg: [180, 70,  20],  light: true  },  // Rust
+  35: { bg: [200, 160, 220], light: false },  // Lilac
+  36: { bg: [0,   120, 200], light: true  },  // Cerulean
+  37: { bg: [195, 155, 40],  light: false },  // Ochre
+  38: { bg: [110, 40,  100], light: true  },  // Plum
+  39: { bg: [80,  220, 180], light: false },  // Aquamarine
+  40: { bg: [110, 0,   50],  light: true  },  // Burgundy
+  41: { bg: [210, 180, 130], light: false },  // Tan
+  42: { bg: [0,   50,  255], light: true  },  // Electric Blue
+  43: { bg: [255, 50,  140], light: true  },  // Hot Pink
+  44: { bg: [0,   80,  0],   light: true  },  // Dark Green
+  45: { bg: [240, 230, 200], light: false },  // Ivory
+  46: { bg: [55,  125, 175], light: true  },  // Steel Blue
+  47: { bg: [195, 90,  40],  light: true  },  // Copper
+};
+
+const BASE_MIN = 2;
+const BASE_MAX = 48;
+
+// Covers bases 2–62
+const DIGITS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+function toBaseStr(n, base) {
+  // Works on regular numbers (digit values, small sums)
+  if (n === 0) return '0';
+  let s = '';
+  while (n > 0) { s = DIGITS[n % base] + s; n = Math.floor(n / base); }
+  return s;
+}
+
+function toBaseStrBig(n, base) {
+  // Works on BigInt (Pascal's triangle values)
+  if (n === 0n) return '0';
+  const b = BigInt(base);
+  let s = '';
+  while (n > 0n) { s = DIGITS[Number(n % b)] + s; n = n / b; }
+  return s;
+}
+
+// O(1) digit root using mod — works directly on BigInt
+function digitRoot(n, base) {
+  if (n === 0n) return 0;
+  const b = BigInt(base - 1);
+  return Number(((n - 1n) % b) + 1n);
+}
+
+// Iterative breakdown for the modal (only used for display, not computation)
+function digitRootSteps(n, base) {
+  if (n === 0n) return [];
+  const steps = [];
+  const bigBase = BigInt(base);
+  let cur = n;
+  while (cur >= bigBase) {
+    const digits = [];
+    let tmp = cur;
+    while (tmp > 0n) {
+      digits.unshift(Number(tmp % bigBase));
+      tmp = tmp / bigBase;
+    }
+    const sum = digits.reduce((a, b) => a + b, 0);
+    steps.push({
+      terms: digits.map(d => toBaseStr(d, base)),
+      sum,
+      sumStr: toBaseStr(sum, base),
+    });
+    cur = BigInt(sum);
+  }
+  return steps;
+}
+
+function hslToRgb(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+
+function needsLightText(r, g, b) {
+  const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b) < 0.35;
+}
+
+function wheelColor(root, base) {
+  if (root === 0) return { bg: [30, 30, 30], light: true };
+  const hue     = ((root - 1) / (base - 1)) * 360;
+  const [r,g,b] = hslToRgb(hue, 80, 50);
+  return { bg: [r, g, b], light: needsLightText(r, g, b) };
+}
+
+function getColor(root) {
+  if (colorMode === 'wheel') return wheelColor(root, base);
+  return NAMED_COLORS[root] ?? wheelColor(root, base);
+}
+
+// ── State ──────────────────────────────────────────────
+const wrap    = document.getElementById('triangle-wrap');
+const overlay = document.getElementById('overlay');
+const playBtn = document.getElementById('playBtn');
+const baseSlider = document.getElementById('baseSlider');
+const baseInput  = document.getElementById('baseInput');
+const cellSizeSlider = document.getElementById('cellSize');
+const cellSizeVal    = document.getElementById('cellSizeVal');
+
+let cellSize     = 60;
+let base         = 10;
+let colorMode    = 'wheel';
+let showNumbers  = true;
+let playInterval = null;
+
+// Cache the computed triangle between draws to avoid recomputing when
+// only color/base changes (not row count). Keyed by numRows.
+let cachedRows   = 0;
+let cachedTriangle = [];  // array of BigInt arrays
+
+function buildTriangle(numRows) {
+  if (numRows === cachedRows) return cachedTriangle;
+  const t = [[1n]];
+  for (let r = 1; r < numRows; r++) {
+    const prev = t[r - 1];
+    const row  = [1n];
+    for (let c = 1; c < r; c++) row.push(prev[c - 1] + prev[c]);
+    row.push(1n);
+    t.push(row);
+  }
+  cachedRows     = numRows;
+  cachedTriangle = t;
+  return t;
+}
+
+// ── Draw ───────────────────────────────────────────────
+function draw() {
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+
+  // Largest triangle where all rows fit horizontally and vertically
+  const numRows = Math.min(Math.floor(W / cellSize), Math.floor(H / cellSize));
+  if (numRows < 1) return;
+
+  const triangle = buildTriangle(numRows);
+  const showText  = showNumbers && cellSize >= 28;
+  const sizeStr   = cellSize + 'px';
+
+  // Rebuild DOM rows (fast enough — at most ~50 rows, ~1275 cells)
+  wrap.innerHTML = '';
+
+  for (let r = 0; r < numRows; r++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'pascal-row';
+
+    for (let c = 0; c <= r; c++) {
+      const val  = triangle[r][c];
+      const root = digitRoot(val, base);
+      const col  = getColor(root);
+
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.width      = sizeStr;
+      cell.style.height     = sizeStr;
+      cell.style.background = `rgb(${col.bg[0]},${col.bg[1]},${col.bg[2]})`;
+      cell.style.color      = col.light ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
+
+      if (showText) {
+        const label     = toBaseStrBig(val, base);
+        // Shrink font to fit longer numbers within the cell
+        const maxFs     = Math.max(9, Math.floor(cellSize * 0.28));
+        const fitFs     = Math.floor((cellSize - 4) / (label.length * 0.58));
+        cell.style.fontSize = Math.min(maxFs, Math.max(6, fitFs)) + 'px';
+        cell.textContent = label;
+      }
+
+      cell.addEventListener('click', () => openModal(val, r, c));
+      rowDiv.appendChild(cell);
+    }
+
+    wrap.appendChild(rowDiv);
+  }
+
+  const totalCells = numRows * (numRows + 1) / 2;
+  document.getElementById('info').textContent =
+    `${numRows} rows  ·  ${totalCells} cells  ·  base ${base}`;
+}
+
+// ── Modal ──────────────────────────────────────────────
+function openModal(val, row, col) {
+  const root    = digitRoot(val, base);
+  const c       = getColor(root);
+  const valStr  = toBaseStrBig(val, base);
+  const steps   = digitRootSteps(val, base);
+
+  // Title: the value in current base
+  document.getElementById('modal-number').textContent = valStr;
+
+  // Subtitle: Pascal position + base info
+  document.getElementById('modal-subtitle').textContent =
+    `C(${row}, ${col})  ·  base ${base}  ·  digit root`;
+
+  const stepsEl = document.getElementById('modal-steps');
+  stepsEl.innerHTML = '';
+
+  if (steps.length === 0) {
+    const p = document.createElement('div');
+    p.className = 'modal-step';
+    p.style.color = '#666';
+    p.textContent = `${valStr} is already a single digit`;
+    stepsEl.appendChild(p);
+  } else {
+    steps.forEach(({ terms, sumStr }) => {
+      const p = document.createElement('div');
+      p.className = 'modal-step';
+      // For very long first steps, summarize if > 30 terms
+      const display = terms.length > 30
+        ? `${terms.slice(0, 15).join(' + ')}  …  + ${terms.slice(-5).join(' + ')}`
+        : terms.join(' + ');
+      p.innerHTML = `<span>${display}</span> <span class="eq">= ${sumStr}</span>`;
+      stepsEl.appendChild(p);
+    });
+  }
+
+  const resultEl     = document.getElementById('modal-result');
+  const [r, g, b]    = c.bg;
+  resultEl.textContent      = toBaseStr(root, base);
+  resultEl.style.background = `rgb(${r},${g},${b})`;
+  resultEl.style.color      = c.light ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.8)';
+
+  overlay.classList.add('open');
+}
+
+function closeModal() { overlay.classList.remove('open'); }
+document.getElementById('modal-close').addEventListener('click', closeModal);
+
+// ── Save ───────────────────────────────────────────────
+function saveImage() {
+  const W = wrap.clientWidth;
+  const H = wrap.clientHeight;
+  const numRows = Math.min(Math.floor(W / cellSize), Math.floor(H / cellSize));
+  if (numRows < 1) return;
+
+  const triangle  = buildTriangle(numRows);
+  const canvasW   = numRows * cellSize;
+  const canvasH   = numRows * cellSize;
+  const canvas    = document.createElement('canvas');
+  canvas.width    = canvasW;
+  canvas.height   = canvasH;
+  const ctx       = canvas.getContext('2d');
+
+  const drawText  = showNumbers && cellSize >= 28;
+  const maxFs     = Math.max(9, Math.floor(cellSize * 0.28));
+
+  for (let r = 0; r < numRows; r++) {
+    // Center each row within the canvas width
+    const rowW   = (r + 1) * cellSize;
+    const xStart = (canvasW - rowW) / 2;
+
+    for (let c = 0; c <= r; c++) {
+      const val   = triangle[r][c];
+      const root  = digitRoot(val, base);
+      const col   = getColor(root);
+      const x     = xStart + c * cellSize;
+      const y     = r * cellSize;
+
+      ctx.fillStyle = `rgb(${col.bg[0]},${col.bg[1]},${col.bg[2]})`;
+      ctx.fillRect(x, y, cellSize, cellSize);
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth   = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, cellSize - 1, cellSize - 1);
+
+      if (drawText) {
+        const label = toBaseStrBig(val, base);
+        const fitFs = Math.floor((cellSize - 4) / (label.length * 0.58));
+        const fs    = Math.min(maxFs, Math.max(6, fitFs));
+        ctx.font         = `${fs}px monospace`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle    = col.light ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
+        ctx.fillText(label, x + cellSize / 2, y + cellSize / 2);
+      }
+    }
+  }
+
+  const a    = document.createElement('a');
+  a.download = `pascal-digit-root-base${base}-${numRows}rows.png`;
+  a.href     = canvas.toDataURL('image/png');
+  a.click();
+}
+
+document.getElementById('saveBtn').addEventListener('click', saveImage);
+
+document.getElementById('showNumbers').addEventListener('change', e => {
+  showNumbers = e.target.checked;
+  draw();
+});
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Controls ───────────────────────────────────────────
+function setCellSize(size) {
+  cellSize = Math.min(120, Math.max(12, size));
+  cellSizeSlider.value    = cellSize;
+  cellSizeVal.textContent = cellSize + 'px';
+  draw();
+}
+
+function setBase(b) {
+  base = Math.min(BASE_MAX, Math.max(BASE_MIN, b));
+  baseSlider.value = base;
+  baseInput.value  = base;
+  draw();
+}
+
+cellSizeSlider.addEventListener('input', e => setCellSize(parseInt(e.target.value)));
+
+baseSlider.addEventListener('input', e => { stopPlay(); setBase(parseInt(e.target.value)); });
+baseInput.addEventListener('change', e => {
+  const v = parseInt(e.target.value);
+  if (!isNaN(v)) { stopPlay(); setBase(v); }
+});
+baseInput.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp')   { e.preventDefault(); stopPlay(); setBase(base + 1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); setBase(base - 1); }
+});
+
+document.getElementById('btnWheel').addEventListener('click', () => {
+  colorMode = 'wheel';
+  document.getElementById('btnWheel').classList.add('active');
+  document.getElementById('btnNamed').classList.remove('active');
+  draw();
+});
+document.getElementById('btnNamed').addEventListener('click', () => {
+  colorMode = 'named';
+  document.getElementById('btnNamed').classList.add('active');
+  document.getElementById('btnWheel').classList.remove('active');
+  draw();
+});
+
+function startPlay() {
+  setBase(BASE_MIN);
+  playInterval = setInterval(() => {
+    if (base + 1 > BASE_MAX) { stopPlay(); return; }
+    setBase(base + 1);
+  }, 800);
+  playBtn.textContent = '⏸ Pause';
+  playBtn.classList.add('playing');
+}
+
+function stopPlay() {
+  clearInterval(playInterval);
+  playInterval = null;
+  playBtn.textContent = '▶ Play';
+  playBtn.classList.remove('playing');
+}
+
+playBtn.addEventListener('click', () => {
+  if (playInterval) stopPlay(); else startPlay();
+});
+
+// Scroll to zoom
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  setCellSize(cellSize + (e.deltaY > 0 ? -2 : 2));
+}, { passive: false });
+
+const ro = new ResizeObserver(() => draw());
+ro.observe(wrap);
+
+draw();
+</script>
+</body>
+</html>
