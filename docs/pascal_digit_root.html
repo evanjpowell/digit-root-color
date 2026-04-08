@@ -19,7 +19,8 @@
   #controls {
     display: flex;
     align-items: center;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 10px 20px;
     padding: 8px 14px;
     background: #111;
     border-bottom: 1px solid #333;
@@ -99,8 +100,30 @@
 
   #info { margin-left: auto; color: #888; font-size: 12px; }
 
-  #triangle-wrap {
+  #credit {
+    position: absolute;
+    top: 10px; right: 14px;
+    color: #888; font-size: 12px;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  #credit a { color: #888; text-decoration: none; border-bottom: 1px solid #666; }
+  #credit a:hover { color: #bbb; border-color: #999; }
+  @media (max-width: 800px) {
+    #credit { white-space: normal; max-width: 160px; text-align: right; }
+  }
+  #credit a { color: #888; text-decoration: none; border-bottom: 1px solid #666; }
+  #credit a:hover { color: #bbb; border-color: #999; }
+
+  #canvas-area {
     flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #triangle-wrap {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -221,7 +244,10 @@
   <span id="info"></span>
 </div>
 
-<div id="triangle-wrap"></div>
+<div id="canvas-area">
+  <div id="triangle-wrap"></div>
+  <span id="credit">pascal's triangle suggested by <a href="https://kaiser-factorial.github.io/portfolio/index.html">Corina Kaiser</a></span>
+</div>
 
 <!-- Modal -->
 <div id="overlay">
@@ -611,7 +637,7 @@ function startPlay() {
   playInterval = setInterval(() => {
     if (base + 1 > BASE_MAX) { stopPlay(); return; }
     setBase(base + 1);
-  }, 800);
+  }, 400);
   playBtn.textContent = '⏸ Pause';
   playBtn.classList.add('playing');
 }
